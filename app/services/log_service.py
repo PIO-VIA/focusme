@@ -184,37 +184,52 @@ async def log_limit_reached(
 
 async def log_challenge_created(
     db: Session,
-    user_id: int,
-    challenge_id: int,
-    challenge_title: str
+    user: User,
+    challenge
 ) -> None:
     """Log la création d'un challenge"""
     await create_log(
         db=db,
         action=LogAction.CHALLENGE_CREATED,
-        message=f"Challenge créé: {challenge_title}",
-        user_id=user_id,
+        message=f"Challenge créé: {challenge.title}",
+        user_id=user.id,
         level=LogLevel.INFO,
         resource_type="challenge",
-        resource_id=challenge_id
+        resource_id=challenge.id
     )
 
 
 async def log_challenge_joined(
     db: Session,
-    user_id: int,
-    challenge_id: int,
-    challenge_title: str
+    user: User,
+    challenge
 ) -> None:
     """Log qu'un utilisateur a rejoint un challenge"""
     await create_log(
         db=db,
         action=LogAction.CHALLENGE_JOINED,
-        message=f"Utilisateur a rejoint le challenge: {challenge_title}",
-        user_id=user_id,
+        message=f"Utilisateur a rejoint le challenge: {challenge.title}",
+        user_id=user.id,
         level=LogLevel.INFO,
         resource_type="challenge",
-        resource_id=challenge_id
+        resource_id=challenge.id
+    )
+
+
+async def log_challenge_left(
+    db: Session,
+    user: User,
+    challenge
+) -> None:
+    """Log qu'un utilisateur a quitté un challenge"""
+    await create_log(
+        db=db,
+        action=LogAction.CHALLENGE_LEFT,
+        message=f"Utilisateur a quitté le challenge: {challenge.title}",
+        user_id=user.id,
+        level=LogLevel.INFO,
+        resource_type="challenge",
+        resource_id=challenge.id
     )
 
 
@@ -238,19 +253,37 @@ async def log_challenge_completed(
 
 async def log_user_deleted(
     db: Session,
-    admin_id: int,
-    deleted_user_id: int,
-    deleted_username: str
+    admin: User,
+    deleted_user: User
 ) -> None:
     """Log la suppression d'un utilisateur par un admin"""
     await create_log(
         db=db,
         action=LogAction.USER_DELETED,
-        message=f"Utilisateur supprimé: {deleted_username}",
-        user_id=admin_id,
+        message=f"Utilisateur supprimé: {deleted_user.username}",
+        user_id=admin.id,
         level=LogLevel.WARNING,
         resource_type="user",
-        resource_id=deleted_user_id
+        resource_id=deleted_user.id,
+        details=f"Supprimé par l'admin: {admin.username}"
+    )
+
+
+async def log_user_deactivated(
+    db: Session,
+    admin: User,
+    deactivated_user: User
+) -> None:
+    """Log la désactivation d'un utilisateur par un admin"""
+    await create_log(
+        db=db,
+        action=LogAction.USER_SUSPENDED,
+        message=f"Utilisateur désactivé: {deactivated_user.username}",
+        user_id=admin.id,
+        level=LogLevel.WARNING,
+        resource_type="user",
+        resource_id=deactivated_user.id,
+        details=f"Désactivé par l'admin: {admin.username}"
     )
 
 
