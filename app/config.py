@@ -1,6 +1,6 @@
 """
 Configuration de l'application Focus API
-Charge les variables d'environnement et fournit les paramètres globaux
+Charge les variables d'environnement et fournit les paramï¿½tres globaux
 """
 from typing import List, Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     API_PREFIX: str = "/api"
 
-    # Configuration de la base de données
+    # Configuration de la base de donnï¿½es
     DATABASE_URL: str
     DB_HOST: str = "localhost"
     DB_PORT: int = 3306
@@ -56,14 +56,14 @@ class Settings(BaseSettings):
 
     @validator("BACKEND_CORS_ORIGINS", pre=True)
     def assemble_cors_origins(cls, v: str | List[str]) -> List[str] | str:
-        """Convertit une chaîne JSON en liste pour les origines CORS"""
+        """Convertit une chaï¿½ne JSON en liste pour les origines CORS"""
         if isinstance(v, str) and not v.startswith("["):
             return [i.strip() for i in v.split(",")]
         elif isinstance(v, (list, str)):
             return v
         raise ValueError(v)
 
-    # Admin par défaut
+    # Admin par dï¿½faut
     ADMIN_EMAIL: EmailStr = "admin@focusapp.com"
     ADMIN_PASSWORD: str = "AdminSecure123!"
     ADMIN_USERNAME: str = "admin"
@@ -72,8 +72,21 @@ class Settings(BaseSettings):
     CHALLENGE_DURATION_DAYS: int = 7
     REMINDER_TIME: str = "09:00"
 
-    # Limite par défaut (en minutes)
+    # Limite par dï¿½faut (en minutes)
     DEFAULT_DAILY_LIMIT: int = 120
+
+    # Configuration Redis Cache
+    REDIS_HOST: str = "localhost"
+    REDIS_PORT: int = 6379
+    REDIS_DB: int = 0
+    REDIS_PASSWORD: Optional[str] = None
+    REDIS_URL: Optional[str] = None
+    CACHE_ENABLED: bool = True
+    CACHE_TTL: int = 300  # 5 minutes par defaut
+
+    # Configuration Prometheus
+    METRICS_ENABLED: bool = True
+    METRICS_ENDPOINT: str = "/metrics"
 
     model_config = SettingsConfigDict(
         env_file=".env",

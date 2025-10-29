@@ -2,7 +2,7 @@
 Application principale FastAPI - Focus Backend
 Point d'entree de l'API REST pour l'application Focus
 """
-from fastapi import FastAPI, Request, status
+from fastapi import FastAPI, Request, status, Response
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -14,6 +14,12 @@ from datetime import datetime
 
 from app.config import settings, LOGGING_CONFIG
 from app.database import init_db, create_admin_user, check_db_connection
+from app.services.cache_service import cache_service
+from app.services.metrics_service import (
+    PrometheusMiddleware,
+    get_metrics,
+    get_metrics_content_type
+)
 from app.routers import (
     auth_router,
     user_router,
@@ -58,8 +64,17 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Erreur lors de la creation de l'admin: {e}")
 
+    # Connecte le cache Redis
+    try:
+        await cache_service.connect()
+        if cache_service.enabled:
+            logger.info("Cache Redis connecte et operationnel")
+    except Exception as e:
+        logger.warning(f"Cache Redis non disponible: {e}")
+
     logger.info(f"API disponible sur: {settings.API_PREFIX}")
     logger.info(f"Documentation Swagger: {settings.API_PREFIX}/docs")
+    logger.info(f"Metriques Prometheus: {settings.METRICS_ENDPOINT}")
     logger.info(f"Mode debug: {settings.DEBUG}")
     logger.info("Application prete a recevoir des requetes")
 
@@ -68,6 +83,13 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("Arret de l'application...")
     logger.info("Nettoyage des ressources...")
+
+    # Deconnecte Redis
+    try:
+        await cache_service.disconnect()
+    except Exception as e:
+        logger.error(f"Erreur lors de la deconnexion Redis: {e}")
+
     logger.info("Application arretee proprement")
 
 
@@ -104,6 +126,11 @@ app = FastAPI(
 # ========================
 # MIDDLEWARE
 # ========================
+
+# Prometheus metrics (doit etre le premier middleware)
+if settings.METRICS_ENABLED:
+    app.add_middleware(PrometheusMiddleware)
+    logger.info("Middleware Prometheus active")
 
 # CORS - Cross-Origin Resource Sharing
 app.add_middleware(
@@ -233,12 +260,34 @@ async def health_check():
     """
     db_healthy = check_db_connection()
 
+    # Verifie le statut du cache Redis
+    cache_info = await cache_service.get_info()
+
     return {
         "status": "healthy" if db_healthy else "unhealthy",
         "database": "connected" if db_healthy else "disconnected",
+        "cache": cache_info,
         "timestamp": datetime.utcnow(),
         "version": settings.APP_VERSION
     }
+
+
+@app.get(settings.METRICS_ENDPOINT, tags=["Monitoring"])
+async def metrics():
+    """
+    Endpoint Prometheus - Expose les metriques de l'application
+
+    Returns:
+        Response: Metriques au format Prometheus
+    """
+    if not settings.METRICS_ENABLED:
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"detail": "Metriques desactivees"}
+        )
+
+    metrics_data = get_metrics()
+    return Response(content=metrics_data, media_type=get_metrics_content_type())
 
 
 # ========================
