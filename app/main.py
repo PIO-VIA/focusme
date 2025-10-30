@@ -26,7 +26,8 @@ from app.routers import (
     activity_router,
     challenge_router,
     blocked_router,
-    admin_router
+    admin_router,
+    websocket_router
 )
 
 # Configuration du logging
@@ -329,6 +330,14 @@ app.include_router(
     admin_router.router,
     prefix=settings.API_PREFIX
 )
+
+# WebSocket (notifications en temps reel)
+if settings.WEBSOCKET_ENABLED:
+    app.include_router(
+        websocket_router.router,
+        prefix=settings.API_PREFIX
+    )
+    logger.info("WebSocket notifications activees")
 
 
 # ========================

@@ -88,6 +88,16 @@ class Settings(BaseSettings):
     METRICS_ENABLED: bool = True
     METRICS_ENDPOINT: str = "/metrics"
 
+    # Configuration OAuth Google
+    GOOGLE_CLIENT_ID: Optional[str] = None
+    GOOGLE_CLIENT_SECRET: Optional[str] = None
+    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/auth/google/callback"
+    OAUTH_ENABLED: bool = False
+
+    # Configuration WebSocket
+    WEBSOCKET_ENABLED: bool = True
+    WEBSOCKET_HEARTBEAT_INTERVAL: int = 30  # secondes
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

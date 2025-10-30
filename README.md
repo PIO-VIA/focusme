@@ -3,7 +3,9 @@
 ![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.115.0-green.svg)
 ![MySQL](https://img.shields.io/badge/MySQL-8.0+-orange.svg)
+![Redis](https://img.shields.io/badge/Redis-7.0-red.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
+![CI](https://img.shields.io/badge/CI-GitHub_Actions-success.svg)
 
 API REST moderne et sécurisée pour **Focus**, l'application intelligente qui aide les utilisateurs à mesurer et contrôler leur temps passé sur les réseaux sociaux.
 
@@ -25,6 +27,7 @@ API REST moderne et sécurisée pour **Focus**, l'application intelligente qui a
 
 ### Authentification et Sécurité
 - Inscription et connexion avec JWT (JSON Web Tokens)
+- **OAuth 2.0 Google** - Connexion avec compte Google
 - Vérification d'email obligatoire
 - Réinitialisation de mot de passe sécurisée
 - Hachage des mots de passe avec bcrypt
@@ -72,30 +75,59 @@ API REST moderne et sécurisée pour **Focus**, l'application intelligente qui a
 - Résultats des challenges
 - Alertes de limite
 
+### Performance et Monitoring
+- **Cache Redis** - Cache intelligent pour améliorer les performances
+- **Prometheus** - Métriques détaillées de l'application
+- **Grafana** - Tableaux de bord de monitoring
+- Health check endpoints pour les load balancers
+
+### Notifications en Temps Réel
+- **WebSocket** - Connexion temps réel pour notifications
+- Notifications de limite d'application
+- Mises à jour de challenges en direct
+- Heartbeat pour maintenir les connexions
+- Support multi-connexion par utilisateur
+
+### CI/CD et DevOps
+- **GitHub Actions** - Pipeline CI/CD automatisé
+- Tests automatiques (linting, type checking, unit tests)
+- Security scanning (Safety, Bandit)
+- Déploiement automatique sur push
+- Docker et Docker Compose
+
 ## Architecture
 
 ```
-┌─────────────────┐
-│   Client Apps   │  (Web, Mobile)
-└────────┬────────┘
-         │ HTTPS
-         ▼
-┌─────────────────┐
-│   FastAPI App   │  (REST API)
-├─────────────────┤
-│   Middleware    │  (CORS, Auth, Logs)
-├─────────────────┤
-│   Routers       │  (Endpoints)
-├─────────────────┤
-│   Services      │  (Business Logic)
-├─────────────────┤
-│   Models/ORM    │  (SQLAlchemy)
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│   MySQL DB      │
-└─────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                     Client Apps                         │
+│              (Web, Mobile, Desktop)                     │
+└──────┬──────────────────────────┬──────────────────────┘
+       │ HTTPS/WSS                │ WebSocket
+       │                          │
+       ▼                          ▼
+┌─────────────────┐      ┌─────────────────┐
+│  REST API       │      │   WebSocket     │
+│  (FastAPI)      │      │   (Real-time)   │
+└────────┬────────┘      └────────┬────────┘
+         │                        │
+         ▼                        │
+┌─────────────────────────────────┴──────┐
+│         FastAPI Application            │
+├────────────────────────────────────────┤
+│  Middleware (CORS, Auth, Prometheus)   │
+├────────────────────────────────────────┤
+│  Routers (auth, users, challenges...)  │
+├────────────────────────────────────────┤
+│  Services (business logic, cache...)   │
+├────────────────────────────────────────┤
+│  Models/ORM (SQLAlchemy)               │
+└───┬─────────┬─────────┬─────────┬──────┘
+    │         │         │         │
+    ▼         ▼         ▼         ▼
+┌────────┐ ┌─────┐ ┌──────────┐ ┌──────────┐
+│ MySQL  │ │Redis│ │Prometheus│ │  Email   │
+│   DB   │ │Cache│ │ Metrics  │ │ Service  │
+└────────┘ └─────┘ └──────────┘ └──────────┘
 ```
 
 ## Technologies
@@ -110,19 +142,38 @@ API REST moderne et sécurisée pour **Focus**, l'application intelligente qui a
 - **MySQL** 8.0+ - Base de données relationnelle
 - **Alembic** - Migrations de base de données
 
+### Cache et Performance
+- **Redis** 7.0+ - Cache en mémoire
+- **aioredis** - Client Redis asynchrone
+
+### Monitoring et Métriques
+- **Prometheus** - Collecte de métriques
+- **Grafana** - Visualisation des métriques
+- **prometheus-client** - Client Python pour Prometheus
+
 ### Sécurité
 - **python-jose** - JWT (JSON Web Tokens)
 - **passlib** + **bcrypt** - Hachage des mots de passe
 - **python-dotenv** - Gestion des variables d'environnement
+- **authlib** - OAuth 2.0 (Google)
 
-### Emails
+### Communication
 - **FastAPI-Mail** - Envoi d'emails
 - **Jinja2** - Templates HTML
+- **websockets** - Communication temps réel
+- **httpx** - Client HTTP asynchrone
 
-### Tests
+### Tests et CI/CD
 - **pytest** - Framework de tests
 - **pytest-asyncio** - Tests asynchrones
-- **httpx** - Client HTTP pour les tests
+- **GitHub Actions** - Intégration continue
+- **Safety** - Scan de sécurité des dépendances
+- **Bandit** - Analyse de sécurité du code
+
+### DevOps
+- **Docker** - Conteneurisation
+- **Docker Compose** - Orchestration multi-conteneurs
+- **Gunicorn** + **Uvicorn** - Serveur ASGI en production
 
 ## Installation
 
@@ -130,6 +181,8 @@ API REST moderne et sécurisée pour **Focus**, l'application intelligente qui a
 
 - Python 3.11 ou supérieur
 - MySQL 8.0 ou supérieur
+- Redis 7.0 ou supérieur (optionnel mais recommandé)
+- Docker et Docker Compose (optionnel, pour déploiement)
 - pip (gestionnaire de paquets Python)
 
 ### Étapes d'installation
@@ -270,6 +323,8 @@ FastAPI génère automatiquement une documentation interactive :
 ```http
 POST   /api/auth/register              # Inscription
 POST   /api/auth/login                 # Connexion
+GET    /api/auth/google                # OAuth Google - Initier connexion
+GET    /api/auth/google/callback       # OAuth Google - Callback
 POST   /api/auth/verify-email          # Vérification d'email
 POST   /api/auth/resend-verification   # Renvoyer l'email de vérification
 POST   /api/auth/forgot-password       # Demander réinitialisation
@@ -350,6 +405,20 @@ DELETE /api/admin/logs/cleanup         # Nettoyer les vieux logs
 GET    /api/admin/system/health        # Santé du système
 ```
 
+#### WebSocket (`/api/ws`)
+
+```http
+WS     /api/ws/notifications?token=... # Connexion WebSocket temps réel
+GET    /api/ws/stats                   # Statistiques des connexions WebSocket
+```
+
+#### Monitoring
+
+```http
+GET    /api/health                     # Health check (DB, Redis, etc.)
+GET    /metrics                        # Métriques Prometheus
+```
+
 ### Authentification
 
 L'API utilise des JWT (Bearer Tokens). Après connexion, incluez le token dans l'en-tête :
@@ -425,11 +494,12 @@ focus_backend/
 │   │
 │   ├── routers/                   # Endpoints de l'API
 │   │   ├── __init__.py
-│   │   ├── auth_router.py        # Authentification
+│   │   ├── auth_router.py        # Authentification + OAuth Google
 │   │   ├── user_router.py        # Utilisateurs
 │   │   ├── activity_router.py    # Activités
 │   │   ├── challenge_router.py   # Challenges
 │   │   ├── blocked_router.py     # Applications bloquées
+│   │   ├── websocket_router.py   # WebSocket temps réel
 │   │   └── admin_router.py       # Administration
 │   │
 │   ├── services/                  # Logique métier
@@ -437,7 +507,11 @@ focus_backend/
 │   │   ├── email_service.py      # Envoi d'emails
 │   │   ├── challenge_service.py  # Gestion des challenges
 │   │   ├── timer_service.py      # Services de timing
-│   │   └── log_service.py        # Logging
+│   │   ├── log_service.py        # Logging
+│   │   ├── cache_service.py      # Cache Redis
+│   │   ├── metrics_service.py    # Métriques Prometheus
+│   │   ├── oauth_service.py      # OAuth Google
+│   │   └── websocket_service.py  # WebSocket manager
 │   │
 │   ├── utils/                     # Utilitaires
 │   │   ├── __init__.py
@@ -446,13 +520,23 @@ focus_backend/
 │   │
 │   └── __init__.py
 │
+├── .github/
+│   └── workflows/                 # GitHub Actions CI/CD
+│       ├── ci.yml                # Tests, linting, security
+│       └── cd.yml                # Déploiement
+│
 ├── logs/                          # Logs de l'application
 ├── tests/                         # Tests unitaires et d'intégration
+├── docker-compose.yml            # Orchestration Docker
+├── Dockerfile                    # Image Docker
+├── prometheus.yml                # Configuration Prometheus
 ├── .env                          # Variables d'environnement (non versionné)
 ├── .env.example                  # Exemple de configuration
 ├── .gitignore
 ├── requirements.txt              # Dépendances Python
-└── README.md                     # Ce fichier
+├── README.md                     # Ce fichier
+├── CACHING_MONITORING.md         # Guide Redis & Prometheus
+└── CICD_OAUTH_WEBSOCKET.md       # Guide CI/CD, OAuth & WebSocket
 ```
 
 ## Tests
@@ -505,8 +589,21 @@ docker run -d \
 ### Avec Docker Compose
 
 ```bash
+# Démarrer tous les services (MySQL, Redis, API, Prometheus, Grafana)
 docker-compose up -d
+
+# Voir les logs
+docker-compose logs -f api
+
+# Arrêter les services
+docker-compose down
 ```
+
+**Services disponibles:**
+- API: http://localhost:8000
+- Documentation: http://localhost:8000/api/docs
+- Prometheus: http://localhost:9090
+- Grafana: http://localhost:3001 (admin/admin)
 
 ### Sur un serveur (Production)
 
@@ -514,7 +611,7 @@ docker-compose up -d
 
 ```bash
 sudo apt update
-sudo apt install python3.11 python3-pip mysql-server nginx
+sudo apt install python3.11 python3-pip mysql-server redis-server nginx
 ```
 
 2. **Configurer MySQL**
@@ -617,12 +714,22 @@ Les contributions sont les bienvenues ! Pour contribuer :
 
 Ce projet est sous licence MIT. Voir le fichier `LICENSE` pour plus de détails.
 
+## Guides Complémentaires
+
+Pour plus d'informations sur des fonctionnalités spécifiques, consultez :
+
+- **[CACHING_MONITORING.md](CACHING_MONITORING.md)** - Guide complet sur Redis cache et Prometheus monitoring
+- **[CICD_OAUTH_WEBSOCKET.md](CICD_OAUTH_WEBSOCKET.md)** - Guide CI/CD, OAuth Google et WebSocket notifications
+- **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)** - Résumé technique du projet
+- **[QUICKSTART.md](QUICKSTART.md)** - Démarrage rapide
+
 ## Support
 
 Pour toute question ou problème :
 
 - **Email** : support@focusapp.com
 - **Issues GitHub** : [github.com/votre-username/focus-backend/issues](https://github.com/votre-username/focus-backend/issues)
+- **Documentation API** : http://localhost:8000/api/docs (une fois l'application lancée)
 
 ## Auteurs
 

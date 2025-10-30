@@ -276,3 +276,97 @@ async def refresh_token(refresh_token: str):
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token invalide"
         )
+
+
+# ========================
+# OAUTH GOOGLE
+# ========================
+
+@router.get("/google")
+async def google_login():
+    """
+    Initie la connexion via Google OAuth
+
+    Redirige l'utilisateur vers la page d'autorisation Google
+    """
+    from app.services.oauth_service import oauth_service
+    from app.config import settings
+
+    if not settings.OAUTH_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="OAuth n'est pas configure"
+        )
+
+    try:
+        authorization_url, state = await oauth_service.get_authorization_url(
+            redirect_uri=settings.GOOGLE_REDIRECT_URI
+        )
+
+        return {
+            "authorization_url": authorization_url,
+            "state": state
+        }
+
+    except Exception as e:
+        logger.error(f"Erreur lors de l'initialisation OAuth: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Erreur lors de l'initialisation OAuth"
+        )
+
+
+@router.get("/google/callback")
+async def google_callback(code: str, state: str, db: Session = Depends(get_db)):
+    """
+    Callback OAuth Google
+
+    Recoit le code d'autorisation et cree/connecte l'utilisateur
+
+    Args:
+        code: Code d'autorisation Google
+        state: State pour verification CSRF
+        db: Session de base de donnees
+    """
+    from app.services.oauth_service import oauth_service
+    from app.config import settings
+
+    if not settings.OAUTH_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_501_NOT_IMPLEMENTED,
+            detail="OAuth n'est pas configure"
+        )
+
+    try:
+        # Authentifie l'utilisateur via Google
+        auth_data = await oauth_service.authenticate_with_google(
+            db=db,
+            code=code,
+            redirect_uri=settings.GOOGLE_REDIRECT_URI
+        )
+
+        user = auth_data['user']
+        tokens = auth_data['tokens']
+
+        # Log la connexion OAuth
+        # await log_user_login(db, user, request)
+
+        return {
+            "access_token": tokens['access_token'],
+            "refresh_token": tokens['refresh_token'],
+            "token_type": tokens['token_type'],
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "full_name": user.full_name,
+                "avatar_url": user.avatar_url
+            }
+        }
+
+    except Exception as e:
+        logger.error(f"Erreur lors du callback OAuth: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Echec de l'authentification OAuth"
+        )
